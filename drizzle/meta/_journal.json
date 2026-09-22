@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1777372809359,
+      "tag": "0000_steady_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1777375759923,
+      "tag": "0001_furry_thena",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777380706754,
+      "tag": "0002_fuzzy_chameleon",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1777442828625,
+      "tag": "0003_flaky_abomination",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1778079679730,
+      "tag": "0004_melted_viper",
+      "breakpoints": true
+    }
+  ]
+}

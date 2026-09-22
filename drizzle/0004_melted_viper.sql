@@ -1,0 +1,1 @@
+ALTER TABLE `processing_runs` ADD `paymentFiles` text;
