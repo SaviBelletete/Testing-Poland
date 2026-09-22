@@ -1,8 +1,18 @@
 // Preconfigured storage helpers for Manus WebDev templates
 // Uploads via Forge Server presigned URL to S3 (PUT direct).
 // Downloads return /manus-storage/{key} paths served via 307 redirect.
+//
+// Outside Manus (BUILT_IN_FORGE_API_URL/KEY unset — e.g. local `pnpm dev`),
+// falls back to a local-disk adapter (server/storageLocal.ts) so the app is
+// runnable for local testing without Manus infrastructure. Production must
+// still be migrated to a real S3-compatible adapter per the "Recreate the
+// Runtime Outside Manus" migration notes — the local-disk fallback is for
+// development only.
 
 import { ENV } from "./_core/env";
+import { storagePutLocal, storageGetLocal, storageGetSignedUrlLocal } from "./storageLocal";
+
+const USE_FORGE = Boolean(ENV.forgeApiUrl && ENV.forgeApiKey);
 
 function getForgeConfig() {
   const forgeUrl = ENV.forgeApiUrl;
@@ -28,7 +38,7 @@ function appendHashSuffix(relKey: string): string {
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
-export async function storagePut(
+async function storagePutForge(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
@@ -71,12 +81,12 @@ export async function storagePut(
   return { key, url: `/manus-storage/${key}` };
 }
 
-export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
+async function storageGetForge(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: `/manus-storage/${key}` };
 }
 
-export async function storageGetSignedUrl(relKey: string): Promise<string> {
+async function storageGetSignedUrlForge(relKey: string): Promise<string> {
   const { forgeUrl, forgeKey } = getForgeConfig();
   const key = normalizeKey(relKey);
 
@@ -94,4 +104,22 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
 
   const { url } = (await resp.json()) as { url: string };
   return url;
+}
+
+// ─── Public API: branches to the local-disk adapter when Forge isn't configured ──
+
+export async function storagePut(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; url: string }> {
+  return USE_FORGE ? storagePutForge(relKey, data, contentType) : storagePutLocal(relKey, data, contentType);
+}
+
+export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
+  return USE_FORGE ? storageGetForge(relKey) : storageGetLocal(relKey);
+}
+
+export async function storageGetSignedUrl(relKey: string): Promise<string> {
+  return USE_FORGE ? storageGetSignedUrlForge(relKey) : storageGetSignedUrlLocal(relKey);
 }
