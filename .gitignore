@@ -2,6 +2,10 @@
 **/node_modules
 .pnpm-store/
 
+# Local-disk storage adapter (server/storageLocal.ts) — only used when Forge
+# storage credentials aren't configured, e.g. local `pnpm dev`.
+.local-storage/
+
 # Build outputs
 dist/
 build/

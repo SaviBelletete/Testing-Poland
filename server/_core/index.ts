@@ -15,6 +15,8 @@ import { serveStatic, setupVite } from "./vite";
 import uploadRouter from "../uploadRouter";
 import { startBackupScheduler, checkAndRunBackupIfNeeded } from "../backup-scheduler";
 import { jsonErrorHandler } from "./jsonErrorHandler";
+import { ENV } from "./env";
+import { LOCAL_STORAGE_DIR } from "../storageLocal";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +45,13 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  // Outside Manus (no Forge storage credentials configured — e.g. local
+  // `pnpm dev`), server/storage.ts falls back to writing files under
+  // LOCAL_STORAGE_DIR; serve them back out at the same path its signed URLs
+  // point to. No-op (and harmless) when Forge is configured.
+  if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
+    app.use("/local-storage", express.static(LOCAL_STORAGE_DIR));
+  }
   // Trigger backup check on every request (non-blocking)
   app.use((_req, _res, next) => {
     checkAndRunBackupIfNeeded();
@@ -76,6 +85,11 @@ async function startServer() {
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
+
+  // Keep PORT accurate after findAvailablePort may have bumped it, so the
+  // local storage adapter's signed URLs (which read process.env.PORT at
+  // call time) point at wherever the server actually ended up listening.
+  process.env.PORT = String(port);
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
