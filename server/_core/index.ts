@@ -14,6 +14,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import uploadRouter from "../uploadRouter";
 import { startBackupScheduler, checkAndRunBackupIfNeeded } from "../backup-scheduler";
+import { jsonErrorHandler } from "./jsonErrorHandler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -56,6 +57,12 @@ async function startServer() {
       createContext,
     })
   );
+  // JSON-only error handler for the API surface. Must be registered after
+  // every /api route (including the body parsers above) so a malformed
+  // request body, a multer limit, or any other error reaching Express
+  // before a route's own try/catch comes back as JSON instead of falling
+  // through to Express's default HTML error page.
+  app.use("/api", jsonErrorHandler);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
