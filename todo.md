@@ -208,3 +208,19 @@ Production returned HTTP 500 during finalization after bypassing the reverse-pro
 - [x] Fix the production HTTP 500 in /api/finalize-upload end-to-end — extracted the shared logic into `server/processPaymentsFlow.ts` (`runProcessPaymentsFlow`), used by both routes so they cannot diverge again; added `server/_core/jsonErrorHandler.ts` so every error on the API surface returns structured JSON.
 - [x] Add automated end-to-end tests for /api/upload-chunk plus /api/finalize-upload, including a normal processing response — `server/uploadRouter.chunkedUpload.integration.test.ts` drives a real Express server over HTTP with a synthetic multi-chunk master + weekly file (forward and reverse chunk arrival order) and asserts the same response shape /api/process-payments returns, plus JSON-only error responses for a malformed body and an incomplete chunk set.
 - [ ] Validate against an environment that matches the deployed reverse-proxy's upload body-size limit (~8 MB) before declaring this closed in production — not done in this session (no access to the production proxy/infra). Do not assume a development preview bypasses the reverse proxy.
+
+## Feature — Local Development Without Manus (branch: claude/local-dev-testing)
+Goal: let someone upload a file and see the processing output without any Manus infrastructure, so the app can be tested before a real deployment exists.
+- [x] `server/storage.ts` falls back to a local-disk adapter (`server/storageLocal.ts`, writes to `.local-storage/`, served at `/local-storage`) whenever `BUILT_IN_FORGE_API_URL`/`BUILT_IN_FORGE_API_KEY` are unset — production (Forge-configured) behavior unchanged, purely additive
+- [x] `scripts/local-dev-setup.sh`: installs/starts MariaDB, creates a local database, applies the existing Drizzle migrations, writes a local-only `.env`
+- [x] `LOCAL_TESTING.md` documenting the setup (no login required — the upload UI never gated on auth)
+- [x] Verified end-to-end against a live local server + local database + local-disk storage: campaign auto-creation, duplicate-row skipping, reconciliation, Wise UK payment file generation, and the processed-master download all worked
+
+## Real-file validation (small-file /api/process-payments path)
+Ran a real SC Johnson master (27MB, 32 sheets) and a real multi-country weekly extract (52 rows across UK/Germany/South Africa/France/Belgium/Italy/Turkey/Spain) through the live local app, outside any test suite, to check the core processing path against production-shaped data rather than synthetic fixtures. Files were provided for this check only — not committed, not retained.
+- [x] Confirmed: 0 false duplicates, 0 missed rows across all 8 countries
+- [x] Confirmed: weekly sheet name "Belgium NL" correctly matched to master sheet "Belgium" via the alias-matching logic on a real mismatch (not a synthetic test case)
+- [x] Confirmed: row-count and amount reconciliation both passed exactly (expected == actual) on real monetary totals
+- [x] Confirmed: processed the real 27MB master in ~2.8s
+- [x] Confirmed: all 6 expected payment output files generated correctly, split by currency/pay type (Wise UK GBP, PayPal GBP, PayPal EUR, Wise EUR, Wise ZAR, Wise TRY)
+- [x] Confirmed: processed master downloaded successfully afterward (valid ZIP)
