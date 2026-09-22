@@ -201,7 +201,10 @@
 - [x] Replace client-side FormData fetch with chunked upload utility (client/src/lib/chunkedUpload.ts; wired into Home.tsx via uploadFileInChunks/needsChunkedUpload)
 - [x] Show upload progress bar during chunked upload
 
-## Chunked Upload — Open (Not Yet Fixed)
-Production returned HTTP 500 during finalization after bypassing the reverse-proxy's 413 limit. This is unresolved; do not assume a development preview bypasses the reverse proxy — verify against an environment that matches the deployed proxy's upload limit before declaring this closed.
-- [ ] Fix the production HTTP 500 in /api/finalize-upload end-to-end.
-- [ ] Add automated end-to-end tests for /api/upload-chunk plus /api/finalize-upload, including a normal processing response.
+## Chunked Upload — Finalize Fix (branch: claude/fix-chunked-upload-finalize)
+Production returned HTTP 500 during finalization after bypassing the reverse-proxy's 413 limit. Root-caused to two divergence/robustness gaps between /api/process-payments and /api/finalize-upload:
+- The two routes carried separately-maintained copies of the campaign/master/history logic (finalize-upload's copy had already drifted — a dead `timestamp + 1` workaround for an S3 key collision that storagePut's random hash suffix already prevents).
+- Errors raised before a route handler's own try/catch (a malformed JSON body rejected by express.json(), a multer limit) fell through to Express's default HTML error handler instead of returning JSON, which a `fetch().then(r => r.json())` caller can't parse — surfacing as an opaque failure.
+- [x] Fix the production HTTP 500 in /api/finalize-upload end-to-end — extracted the shared logic into `server/processPaymentsFlow.ts` (`runProcessPaymentsFlow`), used by both routes so they cannot diverge again; added `server/_core/jsonErrorHandler.ts` so every error on the API surface returns structured JSON.
+- [x] Add automated end-to-end tests for /api/upload-chunk plus /api/finalize-upload, including a normal processing response — `server/uploadRouter.chunkedUpload.integration.test.ts` drives a real Express server over HTTP with a synthetic multi-chunk master + weekly file (forward and reverse chunk arrival order) and asserts the same response shape /api/process-payments returns, plus JSON-only error responses for a malformed body and an incomplete chunk set.
+- [ ] Validate against an environment that matches the deployed reverse-proxy's upload body-size limit (~8 MB) before declaring this closed in production — not done in this session (no access to the production proxy/infra). Do not assume a development preview bypasses the reverse proxy.

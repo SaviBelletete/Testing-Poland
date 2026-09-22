@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        # gdrive.test.ts needs real GDRIVE_CLIENT_ID/SECRET/REFRESH_TOKEN and is
+        # excluded here deliberately — no Google Drive credentials are stored
+        # in this repo or its CI. It still runs in any environment where those
+        # secrets are actually configured (see CLAUDE.md's Security section).
+        run: pnpm test:ci
+
+      - name: Typecheck
+        run: pnpm check
