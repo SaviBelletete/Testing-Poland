@@ -27,6 +27,32 @@ Requires Node.js 22, pnpm, and a Debian/Ubuntu-family machine (for the
 `apt-get install mariadb-server` step — adapt that one line if you're on a
 different OS and already have a MySQL-compatible database running).
 
+**On Windows:** `local-dev-setup.sh` is a bash script and won't run in
+PowerShell/cmd — use **WSL (Windows Subsystem for Linux)** instead of trying
+to adapt it to native Windows. WSL2 gives a real Ubuntu environment where the
+script works unmodified, and `localhost` forwards to your Windows browser
+automatically, no extra config needed.
+
+1. In an elevated (Run as Administrator) PowerShell: `wsl --install`, then
+   restart when prompted. This installs Ubuntu by default.
+2. Open the new "Ubuntu" app from the Start menu and set a username/password
+   when it first asks.
+3. Inside that Ubuntu/WSL terminal, install Node.js 22 and git (needed before
+   Claude Code or this script can run at all):
+   ```bash
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+   sudo apt-get install -y nodejs git
+   sudo corepack enable
+   ```
+4. Install Claude Code CLI: `npm install -g @anthropic-ai/claude-code`
+5. Clone the repo over HTTPS. When git asks for a password, use a GitHub
+   [personal access token](https://github.com/settings/tokens) (classic,
+   `repo` scope) instead of your GitHub password — GitHub no longer accepts
+   plain passwords over HTTPS git operations.
+6. From inside the cloned repo folder, run `claude` and ask it to read this
+   file and set everything up — from here on it's the same as any other
+   machine.
+
 ```bash
 ./scripts/local-dev-setup.sh
 pnpm dev
